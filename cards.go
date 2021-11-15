@@ -1,5 +1,4 @@
-package casinoWar
-package main
+package casinowar
 
 import (
 "math/rand"

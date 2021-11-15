@@ -3,9 +3,11 @@ package main
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net"
+	"github.com/ramil600/casinowar"
 
 	//"net"
 	"os"
@@ -17,11 +19,14 @@ func HandleConnection (ctx context.Context, c net.Conn){
 	cards := NewDeck()
 	cards.Shuffle(20)
 	state := InitState(cards)
-
+	state.DealCards()
+	json.NewDecoder(c)
 	for {
-		state.DealCards()
+
 		r := bufio.NewReader(c)
 		text, err := r.ReadString('\n')
+
+
 
 		if err != nil {
 			log.Println("Received message from client", err)

@@ -1,4 +1,4 @@
-package main
+package casinowar
 
 type State struct {
 	Dealer   *Card
@@ -39,4 +39,6 @@ func (s *State) DealCards() {
 	s.Player = &s.Cards[s.TopCard]
 	s.Dealer = &s.Cards[s.TopCard + 1]
 	s.TopCard = s.TopCard + 2
+
+
 }
