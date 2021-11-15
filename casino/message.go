@@ -1,4 +1,4 @@
-package casinowar
+package casino
 
 // StartBet is sent by client to initiate the first bet
 type StartBet struct {

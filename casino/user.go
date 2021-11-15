@@ -1,4 +1,4 @@
-package casinowar
+package casino
 
 type User struct {
 	bank int

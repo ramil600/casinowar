@@ -1,45 +1,55 @@
 package main
 
 import (
-	"bufio"
+	//"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
+
 	"net"
-	"github.com/ramil600/casinowar"
+	"github.com/ramil600/casinowar/casino"
 
 	//"net"
 	"os"
+	"time"
 )
+// HandleConnection will response to connected client. Server will start HandleConnection as
+// a separate goroutine. Context to be implemented.
+func HandleConnection (ctx context.Context, c io.ReadWriteCloser){
 
-func HandleConnection (ctx context.Context, c net.Conn){
-
-	user := NewUser()
-	cards := NewDeck()
+	//user := casino.NewUser()
+    defer c.Close()
+	cards := casino.NewDeck()
 	cards.Shuffle(20)
-	state := InitState(cards)
-	state.DealCards()
-	json.NewDecoder(c)
-	for {
-
-		r := bufio.NewReader(c)
-		text, err := r.ReadString('\n')
-
-
-
-		if err != nil {
-			log.Println("Received message from client", err)
-			break
-		}
-		fmt.Println(text)
-
-		fmt.Fprintf(c, "Your Card: %v ", state.Player.Suit)
-		fmt.Fprintf(c, "Dealer Card %v\n", state.Dealer.Suit)
-
-		user.GetBank()
-
+	state := casino.InitState(*cards)
+	msg:= state.DealCards()
+	//dec := json.NewDecoder(c)
+	rawMessage, err := json.Marshal(msg)
+	if err != nil {
+		log.Fatal("Could not marshal message")
 	}
+	fmt.Println(len(rawMessage))
+	fmt.Println(string(rawMessage))
+	dec := json.NewDecoder(c)
+
+	cardsdealed := casino.CardsDealed{}
+
+
+		if _, err := c.Write(rawMessage); err != nil {
+			log.Fatal(err, ": Could not write to c")
+		}
+		time.Sleep(500 * time.Millisecond)
+
+		dec.Decode(&cardsdealed)
+		fmt.Println(cardsdealed)
+
+
+
+
+
+
 	select {
 	case err := <-ctx.Done():
 		c.Close()
