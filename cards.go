@@ -1,8 +1,9 @@
+package casinoWar
 package main
 
 import (
-	"math/rand"
-	"time"
+"math/rand"
+"time"
 )
 
 type Suits int
@@ -83,4 +84,4 @@ func (d *Deck) Shuffle(n int){
 //	for i:=0; i < len(myDeck); i ++{
 //		fmt.Print( mranks[myDeck[i].Rank], " of ", msuits[myDeck[i].Suit], "\n" )
 //	}
-//}
+//} 
