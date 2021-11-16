@@ -5,19 +5,18 @@ import (
 	"log"
 )
 
+// Current state of the game
 type State struct {
-	Dealer   Card
-	Player   Card
-	Cards    Deck
-	OrigBet  int
-	SideBet  int
-	TotalBet int
-	War      bool
-	TopCard  int
+	DCard   Card // card of Dealer
+	PCard   Card // card of Player
+	Cards   Deck // deck of cards
+	Player  User // player information: original bet, side bet
+	War     bool // if player decided to go to war
+	TopCard int  // top card of the deck, returns index of first non drawn card
 }
 
 func (s *State) PlaceBet(amt int) {
-	s.OrigBet = amt
+	s.Player.OrigBet = amt
 }
 
 func (s *State) GotoWar(war bool) {
@@ -25,11 +24,11 @@ func (s *State) GotoWar(war bool) {
 }
 
 func (s *State) PlaceSideBet(amt int) {
-	s.SideBet = amt
+	s.Player.SideBet = amt
 }
 
 func PlayerWin(s *State, u *User) {
-	u.bank += s.TotalBet
+	u.Bank += s.Player.TotalBet
 }
 
 func InitState(deck Deck) *State {
@@ -41,14 +40,14 @@ func InitState(deck Deck) *State {
 func (s *State) DealCards() TCPData {
 
 	d := (s.Cards)
-	s.Player = d[s.TopCard]
-	s.Dealer = d[s.TopCard+1]
+	s.PCard = d[s.TopCard]
+	s.DCard = d[s.TopCard+1]
 	s.TopCard = s.TopCard + 2
 
 	cardsDealed := CardsDealed{
-		PlayerCard: s.Player,
-		DealerCard: s.Dealer,
-		OrigBet:    s.OrigBet,
+		PlayerCard: s.PCard,
+		DealerCard: s.DCard,
+		OrigBet:    s.Player.OrigBet,
 	}
 	bytes, err := json.Marshal(cardsDealed)
 	if err != nil {
