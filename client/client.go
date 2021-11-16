@@ -9,6 +9,7 @@ import (
 	"net"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/ramil600/casinowar/casino"
@@ -61,6 +62,19 @@ func ParseBetInput(r io.Reader, w io.Writer) {
 
 			if validnum.MatchString(input) {
 				fmt.Println("You entered valid number")
+				inputnum, err := strconv.Atoi(input)
+				if err != nil {
+					log.Println("Could not convert input to number", err)
+				}
+
+				newbet := casino.StartBet{
+					Bet: inputnum,
+				}
+				betmsg, err := json.Marshal(newbet)
+				if err != nil {
+					log.Fatal("client.go: Could not marshal bet message", err)
+				}
+				w.Write(betmsg)
 			}
 
 			break
@@ -91,26 +105,26 @@ func main() {
 	fmt.Println(c.RemoteAddr())
 	buf := casino.TCPData{}
 	dec := json.NewDecoder(c)
+	for {
+		// Accept dealed cards inside the message: type CardsDealed
+		if err := dec.Decode(&buf); err != nil {
+			log.Println(err)
+		}
+		cardsdealed, err := casino.ParseCardsDealed(buf)
+		if err != nil {
+			log.Println(err)
+		}
+		_, err = json.Marshal(cardsdealed)
+		if err != nil {
+			log.Println(err)
+		}
 
-	// Accept dealed cards inside the message: type CardsDealed
-	if err := dec.Decode(&buf); err != nil {
-		log.Println(err)
+		PrintResult(cardsdealed)
+		ParseBetInput(os.Stdin, c)
+
 	}
-	cardsdealed, err := casino.ParseCardsDealed(buf)
-	if err != nil {
-		log.Println(err)
-	}
 
-	PrintResult(cardsdealed)
-	ParseBetInput(os.Stdin, c)
-
-	bytes, err := json.Marshal(cardsdealed)
-	if err != nil {
-		log.Println(err)
-	}
-	fmt.Println(bytes)
-
-	c.Write(bytes)
+	//c.Write(bytes)
 
 	//dec := json.NewDecoder(c)
 	//

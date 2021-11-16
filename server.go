@@ -23,31 +23,43 @@ func HandleConnection(ctx context.Context, c io.ReadWriteCloser) {
 
 	defer c.Close()
 
-	cardsdealed := casino.CardsDealed{}
+	newbet := casino.StartBet{}
 
 	//Initialize new deck
 	cards := casino.NewDeck()
 	cards.Shuffle(20)
 	state := casino.InitState(*cards)
 
-	//Deal Cards
-	msg := state.DealCards()
-	rawMessage, err := json.Marshal(msg)
-	if err != nil {
-		log.Fatal("Could not marshal message")
+
+
+	for {
+		//Deal Cards
+		msg := state.DealCards()
+		rawMessage, err := json.Marshal(msg)
+		if err != nil {
+			log.Fatal("Could not marshal message")
+		}
+		dec := json.NewDecoder(c)
+
+		// Send message to player
+		if _, err := c.Write(rawMessage); err != nil {
+			log.Fatal(err, ": Could not write to c")
+		}
+		time.Sleep(500 * time.Millisecond)
+
+		// Receive the input from the user
+		dec.Decode(&newbet)
+		fmt.Println(newbet)
+
+		if newbet.Bet <= 0 {
+			break
+		}
+
 	}
-	dec := json.NewDecoder(c)
 
 
-	// Send message to player
-	if _, err := c.Write(rawMessage); err != nil {
-		log.Fatal(err, ": Could not write to c")
-	}
-	time.Sleep(500 * time.Millisecond)
 
-	// Receive the input from the user
-	dec.Decode(&cardsdealed)
-	fmt.Println(cardsdealed)
+
 
 	select {
 	case err := <-ctx.Done():
