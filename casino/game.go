@@ -17,10 +17,15 @@ type State struct {
 
 func (s *State) PlaceBet(amt int) {
 	s.Player.OrigBet = amt
+	s.Player.Bank = s.Player.Bank - amt
 }
 
 func (s *State) GotoWar(war bool) {
 	s.War = war
+}
+
+func (s State) IsDraw() bool{
+	return s.DCard.Rank == s.PCard.Rank
 }
 
 func (s *State) PlaceSideBet(amt int) {
@@ -48,7 +53,12 @@ func (s *State) DealCards() TCPData {
 		PlayerCard: s.PCard,
 		DealerCard: s.DCard,
 		OrigBet:    s.Player.OrigBet,
+
 	}
+	if cardsDealed.PlayerCard.Rank == cardsDealed.DealerCard.Rank {
+		cardsDealed.WarDraw = "true"
+	}
+
 	bytes, err := json.Marshal(cardsDealed)
 	if err != nil {
 		log.Fatal("game.go: Could not marshal json")

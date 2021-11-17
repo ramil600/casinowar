@@ -1,20 +1,32 @@
 package main
 
 import (
-	//"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
-
-	"github.com/ramil600/casinowar/casino"
 	"net"
-
-	//"net"
 	"os"
 	"time"
+
+	"github.com/ramil600/casinowar/casino"
 )
+
+func SendCards (msg casino.TCPData, w io.Writer) error{
+
+	rawMessage, err := json.Marshal(msg)
+	if err != nil {
+		return err
+	}
+	
+	// Send message to player
+	if _, err := w.Write(rawMessage); err != nil {
+		return err
+	}
+	time.Sleep(500 * time.Millisecond)
+	return nil
+}
 
 // HandleConnection will response to connected client. Server will start HandleConnection as
 // a separate goroutine. Context to be implemented.
@@ -23,38 +35,51 @@ func HandleConnection(ctx context.Context, c io.ReadWriteCloser) {
 
 	defer c.Close()
 
-	newbet := casino.StartBet{}
+	newBet := casino.StartBet{}
+	warBet := casino.WarRequest{}
 
 	//Initialize new deck
 	cards := casino.NewDeck()
 	cards.Shuffle(20)
 	state := casino.InitState(*cards)
-
+	dec := json.NewDecoder(c)
 
 
 	for {
-		//Deal Cards
-		msg := state.DealCards()
-		rawMessage, err := json.Marshal(msg)
-		if err != nil {
-			log.Fatal("Could not marshal message")
-		}
-		dec := json.NewDecoder(c)
-
-		// Send message to player
-		if _, err := c.Write(rawMessage); err != nil {
-			log.Fatal(err, ": Could not write to c")
-		}
-		time.Sleep(500 * time.Millisecond)
-
 		// Receive the input from the user
-		dec.Decode(&newbet)
-		fmt.Println(newbet)
+		dec.Decode(&newBet)
+		fmt.Println(newBet)
 
-		if newbet.Bet <= 0 {
+		state.PlaceBet(newBet.Bet)
+		state.PlaceSideBet(newBet.SideBet)
+
+		if (newBet.Bet <= 0) && (newBet.WarReq != "true") {
 			break
 		}
 
+		if newBet.WarReq == "true" {
+			fmt.Println("War request from player processed.")
+		}
+
+		//Deal Cards and send player cardsdealed message
+		msg := state.DealCards()
+		if err:= SendCards(msg, c); err != nil {
+			log.Fatal("Could not send the message to player:", err)
+		}
+
+
+		if state.IsDraw(){
+			dec.Decode(&warBet)
+			if warBet.WarReq == "true"{
+				fmt.Println("We are going to war..")
+				//state.BurnCards()
+				//Deal Cards and Send message to the player
+				msg := state.DealCards()
+				SendCards(msg, c)
+
+			}
+			continue
+		}
 	}
 
 

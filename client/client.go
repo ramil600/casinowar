@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -15,30 +16,143 @@ import (
 	"github.com/ramil600/casinowar/casino"
 )
 
-//PrintResult prints the cardsdealed message coming from server
-func PrintResult(message casino.CardsDealed) {
+//PrintCardsDealt prints the cardsdealed message coming from server
+func PrintCardsDealt(message casino.CardsDealed) {
 
 	fmt.Println("Dealed Cards are:")
 	fmt.Println("Player:", message.PlayerCard.Rank)
 	fmt.Println("Dealer:", message.DealerCard.Rank)
 	if message.PlayerCard.Rank == message.DealerCard.Rank {
-		fmt.Println("Draw..Do you want to go to war?:[Y]yes or [N]no:")
+		//Send WarRequest
+		// TO-DO
+
 	} else if message.PlayerCard.Rank > message.DealerCard.Rank {
 		fmt.Println("Congradulations you won!")
 	} else {
 		fmt.Println("Sorry you lost!")
 	}
 }
-
-// ParseBetInput asks if you want to play another hand, if answer is yes
-// it asks for the bet amount and sends message with input to server
-func ParseBetInput(r io.Reader, w io.Writer) {
-
-	var regex = `^[0-9]*$`
-	validnum := regexp.MustCompile(regex)
+//SendWarRequest will query user if he wants war and then enter War Game loop
+//Place side bet is optional. Cards are dealt back by server and win/lose calculated
+func SendWarRequest(ctx context.Context, r io.Reader, w io.Writer) int{
 
 	rd := bufio.NewReader(r)
 
+	for{
+		fmt.Println("Do you want a to go to War?")
+		fmt.Println("Your original bet will be doubled")
+		fmt.Println("If you win you only win your original bet, and if lose you lose all your bet:[Y/y]yes or [N/n]no")
+
+		input, err := rd.ReadString('\n')
+		if err != nil {
+			log.Println("Could not read input", err)
+		}
+		input = strings.ToLower(input)
+		input = strings.TrimRight(input, "\n")
+		input = strings.TrimRight(input, "\r") // In case compiling in Windows
+
+		if input == "y" || input == "yes" {
+			//send war request message and start war game scenario
+			ParseWarBet(ctx, w)
+			return 0
+
+		} else if input == "n" || input == "no" {
+			fmt.Println("Okay..Quitting.")
+			return -1
+
+		} else {
+			fmt.Println("Sorry I didn't get you..")
+			continue
+
+		}
+	}
+
+}
+
+// ParseWarBet will use io.Reader to parse side bet from user and send a message to tcp connection
+func ParseWarBet(ctx context.Context, w io.Writer) {
+
+	warRequest := casino.StartBet{
+		WarReq: "true",
+	}
+	betMsg, err := json.Marshal(warRequest)
+	if err != nil {
+		log.Fatal("client.go: Could not marshal bet message", err)
+	}
+	w.Write(betMsg)
+
+}
+
+
+// ParseOrigBet will use bufio.Reader to parse initial bet from user and send a message to tcp connection
+func ParseOrigBet(ctx context.Context, r io.Reader, w io.Writer){
+
+	var regex = `^[0-9]*$`
+	validNum := regexp.MustCompile(regex)
+	var origBet, sideBet int
+	rd := bufio.NewReader(r)
+
+	for {
+
+		fmt.Println("Input Your bet:")
+		input, err := rd.ReadString('\n')
+		if err != nil {
+			log.Println("Could not read input", err)
+		}
+
+		input = strings.TrimRight(input, "\n")
+		input = strings.TrimRight(input, "\r") // In case compiling in Windows
+
+		if validNum.MatchString(input) {
+			fmt.Println("Your bet is accepted.")
+			origBet, err = strconv.Atoi(input)
+			if err != nil {
+				log.Println("Could not convert input to number", err)
+			}
+		break
+
+		} else {
+			fmt.Println("Please input the valid number:")
+		}
+	}
+
+
+	// Parse Side Bet
+	fmt.Println("Input Your Side Bet(If you wish not tp you can simply put 0:")
+	input, err := rd.ReadString('\n')
+	if err != nil {
+		log.Println("Could not read input", err)
+	}
+	input = strings.TrimRight(input, "\n")
+	input = strings.TrimRight(input, "\r") // In case compiling in Windows
+
+	if validNum.MatchString(input) {
+		fmt.Println("Your bet is accepted.")
+		sideBet, err = strconv.Atoi(input)
+		if err != nil {
+			log.Println("Could not convert input to number", err)
+		}
+	} else{
+		fmt.Println("Please input the valid number")
+	}
+
+	newBet := casino.StartBet{
+		Bet: origBet,
+		SideBet: sideBet,
+	}
+	betMsg, err := json.Marshal(newBet)
+	if err != nil {
+		log.Fatal("client.go: Could not marshal bet message", err)
+	}
+	w.Write(betMsg)
+}
+
+// ParseBetInput asks if you want to play another hand, if answer is yes
+// it asks for the bet amount and sends message with input to server
+func ParseBetInput(ctx context.Context, r io.Reader, w io.Writer) int{
+
+	//ctx, cancel := context.WithCancel(ctx)
+	rd := bufio.NewReader(r)
 	for {
 		fmt.Print("Do you want a new deal? [Y]yes or [N]no:")
 
@@ -51,42 +165,22 @@ func ParseBetInput(r io.Reader, w io.Writer) {
 		input = strings.TrimRight(input, "\r") // In case compiling in Windows
 
 		if input == "y" || input == "yes" {
-			fmt.Println("Input Your bet:")
-
-			input, err = rd.ReadString('\n')
-			if err != nil {
-				log.Println("Could not read input", err)
-			}
-			input = strings.TrimRight(input, "\n")
-			input = strings.TrimRight(input, "\r") // In case compiling in Windows
-
-			if validnum.MatchString(input) {
-				fmt.Println("You entered valid number")
-				inputnum, err := strconv.Atoi(input)
-				if err != nil {
-					log.Println("Could not convert input to number", err)
-				}
-
-				newbet := casino.StartBet{
-					Bet: inputnum,
-				}
-				betmsg, err := json.Marshal(newbet)
-				if err != nil {
-					log.Fatal("client.go: Could not marshal bet message", err)
-				}
-				w.Write(betmsg)
-			}
-
-			break
+			ParseOrigBet(ctx, os.Stdin,w)
+			return 0
 
 		} else if input == "n" || input == "no" {
 			fmt.Println("Okay..Quitting.")
-			break
+			return -1
+
 		} else {
 			fmt.Println("Sorry I didn't get you..")
 			continue
+
 		}
+
 	}
+
+
 
 }
 
@@ -105,22 +199,50 @@ func main() {
 	fmt.Println(c.RemoteAddr())
 	buf := casino.TCPData{}
 	dec := json.NewDecoder(c)
+	ctx := context.Background()
+
 	for {
-		// Accept dealed cards inside the message: type CardsDealed
+		//Accept Initial Bet from the player, if he wants to quit exit the game loop
+		if ParseBetInput(ctx, os.Stdin, c) == -1 {
+			break
+		}
+		// Accept dealt cards inside the message: type CardsDealed
 		if err := dec.Decode(&buf); err != nil {
 			log.Println(err)
 		}
-		cardsdealed, err := casino.ParseCardsDealed(buf)
+		cardsDealt, err := casino.ParseCardsDealt(buf)
 		if err != nil {
 			log.Println(err)
 		}
-		_, err = json.Marshal(cardsdealed)
+		_, err = json.Marshal(cardsDealt)
 		if err != nil {
 			log.Println(err)
+		}
+		PrintCardsDealt(cardsDealt)
+
+
+		if cardsDealt.WarDraw == "true"{
+			if SendWarRequest(ctx, os.Stdin,c) == -1 {
+				break
+			}
+
+			// Accept dealt cards inside the message: type CardsDealed
+			if err := dec.Decode(&buf); err != nil {
+				log.Println(err)
+			}
+			cardsDealt, err := casino.ParseCardsDealt(buf)
+			if err != nil {
+				log.Println(err)
+			}
+			_, err = json.Marshal(cardsDealt)
+			if err != nil {
+				log.Println(err)
+			}
+			PrintCardsDealt(cardsDealt)
+
 		}
 
-		PrintResult(cardsdealed)
-		ParseBetInput(os.Stdin, c)
+
 
 	}
 
@@ -141,6 +263,5 @@ func main() {
 	//	fmt.Println("Unknown Message Type")
 	//
 	//}
-	select {}
-
+	fmt.Println("Thank you for playing, hope to see you again!")
 }

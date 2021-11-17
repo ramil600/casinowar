@@ -4,13 +4,13 @@ import (
 	"encoding/json"
 )
 
-//ParseCardsDealed will take wrapped TCPData json and Unmarshal byte part of it
+//ParseCardsDealt will take wrapped TCPData json and Unmarshal byte part of it
 //to CardsDealed json struct
-func ParseCardsDealed(tcpdata TCPData) (CardsDealed, error) {
-    cardsdealed := CardsDealed{}
-	err := json.Unmarshal(tcpdata.Data, &cardsdealed)
+func ParseCardsDealt(tcpdata TCPData) (CardsDealed, error) {
+    cardsdealt := CardsDealed{}
+	err := json.Unmarshal(tcpdata.Data, &cardsdealt)
 	if err != nil {
 		return CardsDealed{}, err
 	}
-	return cardsdealed, nil
+	return cardsdealt, nil
 }
