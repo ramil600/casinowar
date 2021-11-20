@@ -2,7 +2,6 @@ package casino
 
 import (
 	"encoding/json"
-	"log"
 )
 
 // Current state of the game
@@ -42,7 +41,7 @@ func InitState(deck Deck) *State {
 	}
 }
 
-func (s *State) DealCards() TCPData {
+func (s *State) DealCards() (TCPData, error) {
 
 	d := (s.Cards)
 	s.PCard = d[s.TopCard]
@@ -61,12 +60,12 @@ func (s *State) DealCards() TCPData {
 
 	bytes, err := json.Marshal(cardsDealed)
 	if err != nil {
-		log.Fatal("game.go: Could not marshal json")
+		return TCPData{}, err
 	}
 
 	return TCPData{
 		Typ:  "cardsdealed",
 		Data: bytes,
-	}
+	}, nil
 
 }

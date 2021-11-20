@@ -19,19 +19,28 @@ import (
 //PrintCardsDealt prints the cardsdealed message coming from server
 func PrintCardsDealt(message casino.CardsDealed) {
 
-	fmt.Println("Dealed Cards are:")
-	fmt.Println("Player:", message.PlayerCard.Rank)
-	fmt.Println("Dealer:", message.DealerCard.Rank)
-	if message.PlayerCard.Rank == message.DealerCard.Rank {
-		//Send WarRequest
-		// TO-DO
+	var mranks = map[casino.Ranks]string{casino.Two: "Two", casino.Three: "Three",
+		casino.Four:"Four", casino.Five: "Five", casino.Six: "Six", casino.Seven:"Seven",
+		casino.Eight: "Eight", casino.Nine: "Nine", casino.Ten: "Ten", casino.Jack:"Jack",
+		casino.Queen: "Queen", casino.King:"King", casino.Ace:"Ace"}
 
+	var msuits = map[casino.Suits]string{casino.Clubs: "Clubs", casino.Diamonds:"Diamonds",
+		casino.Hearts:"Hearts", casino.Spades:"Spades"}
+
+
+	fmt.Println("Dealt Cards are:")
+	fmt.Println("Player:", mranks[message.PlayerCard.Rank],"of", msuits[message.DealerCard.Suit])
+	fmt.Println("Dealer:", mranks[message.DealerCard.Rank], "of", msuits[message.DealerCard.Suit])
+	if message.PlayerCard.Rank == message.DealerCard.Rank {
+		fmt.Println("You are tied..")
 	} else if message.PlayerCard.Rank > message.DealerCard.Rank {
-		fmt.Println("Congradulations you won!")
+		fmt.Println("Congratulations you won!")
 	} else {
 		fmt.Println("Sorry you lost!")
 	}
 }
+
+
 //SendWarRequest will query user if he wants war and then enter War Game loop
 //Place side bet is optional. Cards are dealt back by server and win/lose calculated
 func SendWarRequest(ctx context.Context, r io.Reader, w io.Writer) int{
@@ -42,7 +51,6 @@ func SendWarRequest(ctx context.Context, r io.Reader, w io.Writer) int{
 		fmt.Println("Do you want a to go to War?")
 		fmt.Println("Your original bet will be doubled")
 		fmt.Println("If you win you only win your original bet, and if lose you lose all your bet:[Y/y]yes or [N/n]no")
-
 		input, err := rd.ReadString('\n')
 		if err != nil {
 			log.Println("Could not read input", err)
@@ -53,34 +61,31 @@ func SendWarRequest(ctx context.Context, r io.Reader, w io.Writer) int{
 
 		if input == "y" || input == "yes" {
 			//send war request message and start war game scenario
-			ParseWarBet(ctx, w)
+			ParseWarBet(ctx,"true", w)
 			return 0
-
 		} else if input == "n" || input == "no" {
 			fmt.Println("Okay..Quitting.")
+			ParseWarBet(ctx,"false", w)
 			return -1
-
 		} else {
 			fmt.Println("Sorry I didn't get you..")
 			continue
-
 		}
 	}
-
 }
 
+
 // ParseWarBet will use io.Reader to parse side bet from user and send a message to tcp connection
-func ParseWarBet(ctx context.Context, w io.Writer) {
+func ParseWarBet(ctx context.Context,ans string, w io.Writer) {
 
 	warRequest := casino.StartBet{
-		WarReq: "true",
+		WarReq: ans,
 	}
 	betMsg, err := json.Marshal(warRequest)
 	if err != nil {
 		log.Fatal("client.go: Could not marshal bet message", err)
 	}
 	w.Write(betMsg)
-
 }
 
 
@@ -93,23 +98,26 @@ func ParseOrigBet(ctx context.Context, r io.Reader, w io.Writer){
 	rd := bufio.NewReader(r)
 
 	for {
-
+		//Input your bet from os.Stdin
 		fmt.Println("Input Your bet:")
 		input, err := rd.ReadString('\n')
 		if err != nil {
 			log.Println("Could not read input", err)
 		}
-
 		input = strings.TrimRight(input, "\n")
 		input = strings.TrimRight(input, "\r") // In case compiling in Windows
 
+		//Validate your bet and check if >0
 		if validNum.MatchString(input) {
-			fmt.Println("Your bet is accepted.")
 			origBet, err = strconv.Atoi(input)
 			if err != nil {
 				log.Println("Could not convert input to number", err)
 			}
-		break
+			if origBet > 0 {
+				break
+			} else {
+				fmt.Println("Please input the positive bet")
+			}
 
 		} else {
 			fmt.Println("Please input the valid number:")
@@ -117,23 +125,26 @@ func ParseOrigBet(ctx context.Context, r io.Reader, w io.Writer){
 	}
 
 
-	// Parse Side Bet
-	fmt.Println("Input Your Side Bet(If you wish not tp you can simply put 0:")
-	input, err := rd.ReadString('\n')
-	if err != nil {
-		log.Println("Could not read input", err)
-	}
-	input = strings.TrimRight(input, "\n")
-	input = strings.TrimRight(input, "\r") // In case compiling in Windows
-
-	if validNum.MatchString(input) {
-		fmt.Println("Your bet is accepted.")
-		sideBet, err = strconv.Atoi(input)
+	// Parse Side Bet, allowed to be 0
+	for {
+		fmt.Println("Input Your Side Bet(If you wish not to you can simply put 0:")
+		input, err := rd.ReadString('\n')
 		if err != nil {
-			log.Println("Could not convert input to number", err)
+			log.Println("Could not read input", err)
 		}
-	} else{
-		fmt.Println("Please input the valid number")
+		input = strings.TrimRight(input, "\n")
+		input = strings.TrimRight(input, "\r") // In case compiling in Windows
+
+		if validNum.MatchString(input) {
+			fmt.Println("Your bet is accepted.")
+			sideBet, err = strconv.Atoi(input)
+			if err != nil {
+				log.Println("Could not convert input to number", err)
+			}
+			break
+		} else {
+			fmt.Println("Please input the valid number")
+		}
 	}
 
 	newBet := casino.StartBet{
@@ -154,8 +165,7 @@ func ParseBetInput(ctx context.Context, r io.Reader, w io.Writer) int{
 	//ctx, cancel := context.WithCancel(ctx)
 	rd := bufio.NewReader(r)
 	for {
-		fmt.Print("Do you want a new deal? [Y]yes or [N]no:")
-
+		fmt.Print("Do you want a new deal? [Y/y]yes or [N/n]no:")
 		input, err := rd.ReadString('\n')
 		if err != nil {
 			log.Println("Could not read input", err)
@@ -167,21 +177,14 @@ func ParseBetInput(ctx context.Context, r io.Reader, w io.Writer) int{
 		if input == "y" || input == "yes" {
 			ParseOrigBet(ctx, os.Stdin,w)
 			return 0
-
 		} else if input == "n" || input == "no" {
 			fmt.Println("Okay..Quitting.")
 			return -1
-
 		} else {
 			fmt.Println("Sorry I didn't get you..")
 			continue
-
 		}
-
 	}
-
-
-
 }
 
 func main() {
@@ -192,6 +195,7 @@ func main() {
 	}
 	addr := args[1]
 	c, err := net.Dial("tcp", addr)
+
 	if err != nil {
 		log.Fatalf("Could not connect to host provided: %s", addr)
 	}
@@ -220,7 +224,6 @@ func main() {
 		}
 		PrintCardsDealt(cardsDealt)
 
-
 		if cardsDealt.WarDraw == "true"{
 			if SendWarRequest(ctx, os.Stdin,c) == -1 {
 				break
@@ -239,29 +242,7 @@ func main() {
 				log.Println(err)
 			}
 			PrintCardsDealt(cardsDealt)
-
 		}
-
-
-
 	}
-
-	//c.Write(bytes)
-
-	//dec := json.NewDecoder(c)
-	//
-	//var tcpMsg = casino.TCPData{}
-	//dec.More()
-	//err = dec.Decode(&tcpMsg)
-	//if err != nil {
-	//	log.Fatal("Could not decode tcp Message:", err)
-	//}
-	//switch tcpMsg.Typ {
-	//case "cardsdealed":
-	//	fmt.Println("You received Cards Dealed Struct")
-	//default:
-	//	fmt.Println("Unknown Message Type")
-	//
-	//}
 	fmt.Println("Thank you for playing, hope to see you again!")
 }

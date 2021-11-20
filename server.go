@@ -30,6 +30,8 @@ func SendCards (msg casino.TCPData, w io.Writer) error{
 
 // HandleConnection will response to connected client. Server will start HandleConnection as
 // a separate goroutine. Context to be implemented.
+
+
 func HandleConnection(ctx context.Context, c io.ReadWriteCloser) {
 
 
@@ -62,9 +64,14 @@ func HandleConnection(ctx context.Context, c io.ReadWriteCloser) {
 		}
 
 		//Deal Cards and send player cardsdealed message
-		msg := state.DealCards()
+		msg, err := state.DealCards()
+		if err != nil {
+			log.Fatal("Error during dealing cards generating TCPdata",err)
+		}
 		if err:= SendCards(msg, c); err != nil {
-			log.Fatal("Could not send the message to player:", err)
+			log.Println("Could not send the message to player:", err)
+			return
+
 		}
 
 
@@ -74,8 +81,16 @@ func HandleConnection(ctx context.Context, c io.ReadWriteCloser) {
 				fmt.Println("We are going to war..")
 				//state.BurnCards()
 				//Deal Cards and Send message to the player
-				msg := state.DealCards()
-				SendCards(msg, c)
+				state.GotoWar(true)
+				msg, err := state.DealCards()
+				if err != nil {
+					log.Fatal("Error during Dealing Cards in war bet", err)
+				}
+				if err := SendCards(msg, c); err != nil {
+					log.Println("Could not send the message to player", err)
+					return
+
+				}
 
 			}
 			continue
