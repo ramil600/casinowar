@@ -38,6 +38,7 @@ func PrintCardsDealt(message casino.CardsDealed) {
 	} else {
 		fmt.Println("Sorry you lost!")
 	}
+	fmt.Printf("You have %v left in your Bank.\n", message.UserBank)
 }
 
 
@@ -64,7 +65,6 @@ func SendWarRequest(ctx context.Context, r io.Reader, w io.Writer) int{
 			ParseWarBet(ctx,"true", w)
 			return 0
 		} else if input == "n" || input == "no" {
-			fmt.Println("Okay..Quitting.")
 			ParseWarBet(ctx,"false", w)
 			return -1
 		} else {
@@ -226,7 +226,7 @@ func main() {
 
 		if cardsDealt.WarDraw == "true"{
 			if SendWarRequest(ctx, os.Stdin,c) == -1 {
-				break
+				continue
 			}
 
 			// Accept dealt cards inside the message: type CardsDealed

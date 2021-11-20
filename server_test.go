@@ -3,32 +3,37 @@ package main
 import (
 	"bufio"
 	"bytes"
-	//"context"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/ramil600/casinowar/casino"
+	"github.com/stretchr/testify/assert"
 )
 
 
-
+/*
 type Mockcon interface {
 
-	io.ReadWriter
+	io.Reader
+	io.Writer
 }
 
 type mockon struct{
-	*bufio.ReadWriter
+	*strings.Reader
+	*bufio.Writer
 }
+
 func (m mockon) Close() error  {
 	return nil
 }
 
 func  TestHandle_Connection(t *testing.T)  {
-	buf := make([]byte,1024)
+
 	var bufw bytes.Buffer
 
 	newBet := casino.StartBet{
@@ -37,32 +42,30 @@ func  TestHandle_Connection(t *testing.T)  {
 		WarReq: "false",
 	}
 
-	input:= bufio.NewReader(strings.NewReader("Hello World!\n"))
+
+	output := bufio.NewWriter(&bufw)
 
 	msg,_ := json.Marshal(newBet)
 
-	fmt.Println(string(msg))
-
+	input:= strings.NewReader(string(msg))
 
 	mockc := mockon{
-		ReadWriter: bufio.NewReadWriter(input,bufio.NewWriter(&bufw)),
-	}
-	//go HandleConnection(context.TODO(),mockc)
-
-	if _,err:= mockc.Write(msg); err != nil{
-		t.Error(err)
-	}
-	bufw.Read(buf)
-	fmt.Println(string(buf))
-	n, err:=  mockc.Read(buf)
-
-	if err != nil {
-		t.Error(n, err)
+		Reader: input,
+		Writer: output,
 	}
 
-	fmt.Println(string(buf))
+	ctx, cancel := context.WithCancel(context.Background())
+	HandleConnection(ctx,mockc)
+	cancel()
+	input = nil
+	time.Sleep( time.Millisecond)
 
-	if len(buf) == 0 {
-		t.Errorf("The length is 0")
-	}
+	have := bufw.Bytes()
+	fmt.Println(string(have))
+
+
+
+
+	assert.Equal(t, "TRUE", have, "Testing HandleConnection")
+*/
 }

@@ -13,6 +13,7 @@ type CardsDealed struct {
 	OrigBet int `json:"orig_bet"`
 	SideBet int `json:"side_bet"`
 	TotalBet int `json:"total_bet"`
+	UserBank int `json:"user_bank"`
 	WarDraw string `json:"war_draw"`
 }
 

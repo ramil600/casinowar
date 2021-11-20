@@ -27,17 +27,34 @@ func (s State) IsDraw() bool{
 	return s.DCard.Rank == s.PCard.Rank
 }
 
-func (s *State) PlaceSideBet(amt int) {
-	s.Player.SideBet = amt
+func (s State) HasPlayerWon() bool{
+	return s.PCard.Rank > s.DCard.Rank
 }
 
-func PlayerWin(s *State, u *User) {
-	u.Bank += s.Player.TotalBet
+func (s *State) PlaceSideBet(amt int) {
+	s.Player.SideBet = amt
+	s.Player.Bank = s.Player.Bank -amt
+}
+func (s *State) PlaceWarBet(){
+	s.Player.Bank -= s.Player.OrigBet
+	s.Player.TotalBet += s.Player.OrigBet * 2
+}
+func (s *State) ProcessWarOut(){
+	s.Player.Bank += (s.Player.OrigBet) / 2
+	s.Player.OrigBet = 0
+	s.Player.TotalBet = 0
+}
+
+func (s *State) PlayerWon() {
+	s.Player.Bank += (s.Player.OrigBet) * 2
 }
 
 func InitState(deck Deck) *State {
 	return &State{
 		Cards: deck,
+		Player: User{
+			Bank: 10000,
+		},
 	}
 }
 
@@ -47,11 +64,27 @@ func (s *State) DealCards() (TCPData, error) {
 	s.PCard = d[s.TopCard]
 	s.DCard = d[s.TopCard+1]
 	s.TopCard = s.TopCard + 2
+	
+	if s.PCard.Rank > s.DCard.Rank {
+		s.Player.Bank += (s.Player.OrigBet) * 2
+	}
+
+	if (s.PCard.Rank < s.DCard.Rank) && s.War {
+		s.Player.Bank += s.Player.OrigBet / 2
+	}
+
+	if (s.PCard.Rank == s.DCard.Rank) && s.War {
+		s.Player.Bank += s.Player.OrigBet * 4
+		s.Player.Bank += s.Player.SideBet * 10
+	}
+
+
 
 	cardsDealed := CardsDealed{
 		PlayerCard: s.PCard,
 		DealerCard: s.DCard,
 		OrigBet:    s.Player.OrigBet,
+		UserBank : s.Player.Bank,
 
 	}
 	if cardsDealed.PlayerCard.Rank == cardsDealed.DealerCard.Rank {

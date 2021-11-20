@@ -60,11 +60,11 @@ func NewDeck() *Deck {
 func (d *Deck) Shuffle(n int){
 
 	for i:= 0; i < n; i++ {
-		r:= rand.New(rand.NewSource(time.Now().UnixNano()))
+		s:= rand.NewSource(time.Now().UnixNano())
+		r := rand.New(s)
+		j:= r.Intn(52)
 
-		j:= r.Int() % 52
-
-		k := rand.Int() % 52
+		k := rand.Intn(52)
 
 		if j != k {
 			(*d)[j].Rank, (*d)[k].Rank = (*d)[k].Rank, (*d)[j].Rank

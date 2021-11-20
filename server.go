@@ -8,11 +8,10 @@ import (
 	"log"
 	"net"
 	"os"
-	"time"
 
 	"github.com/ramil600/casinowar/casino"
 )
-
+//SendCards will Marshall json object and write it to connection
 func SendCards (msg casino.TCPData, w io.Writer) error{
 
 	rawMessage, err := json.Marshal(msg)
@@ -24,7 +23,7 @@ func SendCards (msg casino.TCPData, w io.Writer) error{
 	if _, err := w.Write(rawMessage); err != nil {
 		return err
 	}
-	time.Sleep(500 * time.Millisecond)
+
 	return nil
 }
 
@@ -50,17 +49,17 @@ func HandleConnection(ctx context.Context, c io.ReadWriteCloser) {
 	for {
 		// Receive the input from the user
 		dec.Decode(&newBet)
-		fmt.Println(newBet)
 
 		state.PlaceBet(newBet.Bet)
 		state.PlaceSideBet(newBet.SideBet)
-
+		// Player inputs 0 bet means that he is done playing
 		if (newBet.Bet <= 0) && (newBet.WarReq != "true") {
 			break
 		}
-
+		// War Request came from player double the bet
 		if newBet.WarReq == "true" {
 			fmt.Println("War request from player processed.")
+			state.PlaceWarBet()
 		}
 
 		//Deal Cards and send player cardsdealed message
@@ -92,9 +91,12 @@ func HandleConnection(ctx context.Context, c io.ReadWriteCloser) {
 
 				}
 
+			} else {
+				state.GotoWar(false)
+				state.ProcessWarOut()
 			}
 			continue
-		}
+		} 
 	}
 
 
