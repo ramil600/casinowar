@@ -1,13 +1,31 @@
-FROM golang:1.16-alpine
-WORKDIR /app
+FROM golang:1.16-alpine as builder
 RUN apk add --no-cache git
-COPY go.sum ./
-COPY go.mod ./
-RUN go mod download
-RUN go mod tidy
-COPY *.go ./
-COPY casino/*.go ./casino
 
-RUN go build -o /casinowar
+RUN mkdir /app
+ADD . /app
+WORKDIR /app
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+
+# Build the Go app
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main ./cmd
+
+
+# GO Repo base repo
+FROM alpine:latest
+
+RUN apk --no-cache add ca-certificates curl
+
+RUN mkdir /app
+
+WORKDIR /app/
+
+# Copy the Pre-built binary file from the previous stage
+COPY --from=builder /app/main .
+
+
 EXPOSE 8081
-CMD [ "/casinowar", "8081" ]
+CMD [ "./main", "8081" ]
