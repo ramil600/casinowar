@@ -2,6 +2,7 @@ package casino
 
 import (
 	"encoding/json"
+	"errors"
 )
 
 // Current state of the game
@@ -61,6 +62,9 @@ func InitState(deck Deck) *State {
 func (s *State) DealCards() (TCPData, error) {
 
 	d := (s.Cards)
+	if s.TopCard > 52 -2 {
+		return TCPData{}, errors.New("Reached the end of the deck")
+	}
 	s.PCard = d[s.TopCard]
 	s.DCard = d[s.TopCard+1]
 	s.TopCard = s.TopCard + 2

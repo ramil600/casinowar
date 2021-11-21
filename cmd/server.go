@@ -48,7 +48,13 @@ func HandleConnection(ctx context.Context, c io.ReadWriteCloser) {
 
 	for {
 		// Receive the input from the user
-		dec.Decode(&newBet)
+		err:= dec.Decode(&newBet)
+		if err == io.EOF {
+			c.Close()
+			break
+		} else if err != nil {
+			log.Fatal(err)
+		}
 
 		state.PlaceBet(newBet.Bet)
 		state.PlaceSideBet(newBet.SideBet)
@@ -65,11 +71,15 @@ func HandleConnection(ctx context.Context, c io.ReadWriteCloser) {
 		//Deal Cards and send player cardsdealed message
 		msg, err := state.DealCards()
 		if err != nil {
+			c.Close()
 			log.Fatal("Error during dealing cards generating TCPdata",err)
+			break
 		}
 		if err:= SendCards(msg, c); err != nil {
 			log.Println("Could not send the message to player:", err)
-			return
+			c.Close()
+			break
+
 
 		}
 
@@ -83,11 +93,12 @@ func HandleConnection(ctx context.Context, c io.ReadWriteCloser) {
 				state.GotoWar(true)
 				msg, err := state.DealCards()
 				if err != nil {
-					log.Fatal("Error during Dealing Cards in war bet", err)
+					break
+					log.Println("Error during Dealing Cards in war bet: ", err)
 				}
 				if err := SendCards(msg, c); err != nil {
 					log.Println("Could not send the message to player", err)
-					return
+					break
 
 				}
 
@@ -99,15 +110,6 @@ func HandleConnection(ctx context.Context, c io.ReadWriteCloser) {
 		} 
 	}
 
-
-
-
-
-	select {
-	case err := <-ctx.Done():
-		c.Close()
-		log.Println(err)
-	}
 
 }
 

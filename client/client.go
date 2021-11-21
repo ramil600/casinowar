@@ -196,9 +196,11 @@ func main() {
 	addr := args[1]
 	c, err := net.Dial("tcp", addr)
 
+
 	if err != nil {
 		log.Fatalf("Could not connect to host provided: %s", addr)
 	}
+	defer c.Close()
 
 	fmt.Println(c.RemoteAddr())
 	buf := casino.TCPData{}
