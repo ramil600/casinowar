@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ardanlabs/conf"
 	"github.com/ramil600/casinowar/casino"
 )
 
@@ -20,16 +21,15 @@ import (
 func PrintCardsDealt(message casino.CardsDealed) {
 
 	var mranks = map[casino.Ranks]string{casino.Two: "Two", casino.Three: "Three",
-		casino.Four:"Four", casino.Five: "Five", casino.Six: "Six", casino.Seven:"Seven",
-		casino.Eight: "Eight", casino.Nine: "Nine", casino.Ten: "Ten", casino.Jack:"Jack",
-		casino.Queen: "Queen", casino.King:"King", casino.Ace:"Ace"}
+		casino.Four: "Four", casino.Five: "Five", casino.Six: "Six", casino.Seven: "Seven",
+		casino.Eight: "Eight", casino.Nine: "Nine", casino.Ten: "Ten", casino.Jack: "Jack",
+		casino.Queen: "Queen", casino.King: "King", casino.Ace: "Ace"}
 
-	var msuits = map[casino.Suits]string{casino.Clubs: "Clubs", casino.Diamonds:"Diamonds",
-		casino.Hearts:"Hearts", casino.Spades:"Spades"}
-
+	var msuits = map[casino.Suits]string{casino.Clubs: "Clubs", casino.Diamonds: "Diamonds",
+		casino.Hearts: "Hearts", casino.Spades: "Spades"}
 
 	fmt.Println("Dealt Cards are:")
-	fmt.Println("Player:", mranks[message.PlayerCard.Rank],"of", msuits[message.DealerCard.Suit])
+	fmt.Println("Player:", mranks[message.PlayerCard.Rank], "of", msuits[message.DealerCard.Suit])
 	fmt.Println("Dealer:", mranks[message.DealerCard.Rank], "of", msuits[message.DealerCard.Suit])
 	if message.PlayerCard.Rank == message.DealerCard.Rank {
 		fmt.Println("You are tied..")
@@ -38,17 +38,16 @@ func PrintCardsDealt(message casino.CardsDealed) {
 	} else {
 		fmt.Println("Sorry you lost!")
 	}
-	fmt.Printf("You have %v left in your Bank.\n", message.UserBank)
+	fmt.Printf("You have $%.2f CAD left in your Bank.\n", message.UserBank)
 }
-
 
 //SendWarRequest will query user if he wants war and then enter War Game loop
 //Place side bet is optional. Cards are dealt back by server and win/lose calculated
-func SendWarRequest(ctx context.Context, r io.Reader, w io.Writer) int{
+func SendWarRequest(ctx context.Context, r io.Reader, w io.Writer) int {
 
 	rd := bufio.NewReader(r)
 
-	for{
+	for {
 		fmt.Println("Do you want a to go to War?")
 		fmt.Println("Your original bet will be doubled")
 		fmt.Println("If you win you only win your original bet, and if lose you lose all your bet:[Y/y]yes or [N/n]no")
@@ -62,10 +61,10 @@ func SendWarRequest(ctx context.Context, r io.Reader, w io.Writer) int{
 
 		if input == "y" || input == "yes" {
 			//send war request message and start war game scenario
-			ParseWarBet(ctx,"true", w)
+			ParseWarBet(ctx, "true", w)
 			return 0
 		} else if input == "n" || input == "no" {
-			ParseWarBet(ctx,"false", w)
+			ParseWarBet(ctx, "false", w)
 			return -1
 		} else {
 			fmt.Println("Sorry I didn't get you..")
@@ -74,9 +73,8 @@ func SendWarRequest(ctx context.Context, r io.Reader, w io.Writer) int{
 	}
 }
 
-
 // ParseWarBet will use io.Reader to parse side bet from user and send a message to tcp connection
-func ParseWarBet(ctx context.Context,ans string, w io.Writer) {
+func ParseWarBet(ctx context.Context, ans string, w io.Writer) {
 
 	warRequest := casino.StartBet{
 		WarReq: ans,
@@ -88,9 +86,8 @@ func ParseWarBet(ctx context.Context,ans string, w io.Writer) {
 	w.Write(betMsg)
 }
 
-
 // ParseOrigBet will use bufio.Reader to parse initial bet from user and send a message to tcp connection
-func ParseOrigBet(ctx context.Context, r io.Reader, w io.Writer){
+func ParseOrigBet(ctx context.Context, r io.Reader, w io.Writer) {
 
 	var regex = `^[0-9]*$`
 	validNum := regexp.MustCompile(regex)
@@ -124,10 +121,9 @@ func ParseOrigBet(ctx context.Context, r io.Reader, w io.Writer){
 		}
 	}
 
-
 	// Parse Side Bet, allowed to be 0
 	for {
-		fmt.Println("Input Your Side Bet(If you wish not to you can simply put 0:")
+		fmt.Println("Input Your Side Bet. If you wish not to you can simply put 0:")
 		input, err := rd.ReadString('\n')
 		if err != nil {
 			log.Println("Could not read input", err)
@@ -148,7 +144,7 @@ func ParseOrigBet(ctx context.Context, r io.Reader, w io.Writer){
 	}
 
 	newBet := casino.StartBet{
-		Bet: origBet,
+		Bet:     origBet,
 		SideBet: sideBet,
 	}
 	betMsg, err := json.Marshal(newBet)
@@ -160,7 +156,7 @@ func ParseOrigBet(ctx context.Context, r io.Reader, w io.Writer){
 
 // ParseBetInput asks if you want to play another hand, if answer is yes
 // it asks for the bet amount and sends message with input to server
-func ParseBetInput(ctx context.Context, r io.Reader, w io.Writer) int{
+func ParseBetInput(ctx context.Context, r io.Reader, w io.Writer) int {
 
 	//ctx, cancel := context.WithCancel(ctx)
 	rd := bufio.NewReader(r)
@@ -175,7 +171,7 @@ func ParseBetInput(ctx context.Context, r io.Reader, w io.Writer) int{
 		input = strings.TrimRight(input, "\r") // In case compiling in Windows
 
 		if input == "y" || input == "yes" {
-			ParseOrigBet(ctx, os.Stdin,w)
+			ParseOrigBet(ctx, os.Stdin, w)
 			return 0
 		} else if input == "n" || input == "no" {
 			fmt.Println("Okay..Quitting.")
@@ -188,21 +184,37 @@ func ParseBetInput(ctx context.Context, r io.Reader, w io.Writer) int{
 }
 
 func main() {
-	//Take addr:host from input and connect to server
-	args := os.Args
-	if len(args) != 2 {
-		log.Fatal("Usage: go run _client.go addr:host")
-	}
-	addr := args[1]
-	c, err := net.Dial("tcp", addr)
 
+	// SETTING UP CLI CONFIGURATION
+	var cfg struct {
+		Host string `conf:"default:0.0.0.0"`
+		Port string `conf:"default:8081"`
+	}
+
+	if err := conf.Parse(os.Args[1:], "SERVER", &cfg); err != nil {
+		switch err {
+		case conf.ErrHelpWanted:
+			usage, err := conf.Usage("SERVER", &cfg)
+			if err != nil {
+				log.Fatal("generating config usage")
+			}
+			fmt.Println(usage)
+
+		}
+		log.Fatal("Parsing config")
+
+	}
+
+	// Connect to the game server
+	addr := cfg.Host + ":" + cfg.Port
+	c, err := net.Dial("tcp", addr)
 
 	if err != nil {
 		log.Fatalf("Could not connect to host provided: %s", addr)
 	}
 	defer c.Close()
 
-	fmt.Println(c.RemoteAddr())
+	fmt.Println("You are connected to a remote game server:", c.RemoteAddr())
 	buf := casino.TCPData{}
 	dec := json.NewDecoder(c)
 	ctx := context.Background()
@@ -215,6 +227,7 @@ func main() {
 		// Accept dealt cards inside the message: type CardsDealed
 		if err := dec.Decode(&buf); err != nil {
 			log.Println(err)
+			break
 		}
 		cardsDealt, err := casino.ParseCardsDealt(buf)
 		if err != nil {
@@ -226,14 +239,15 @@ func main() {
 		}
 		PrintCardsDealt(cardsDealt)
 
-		if cardsDealt.WarDraw == "true"{
-			if SendWarRequest(ctx, os.Stdin,c) == -1 {
+		if cardsDealt.WarDraw == "true" {
+			if SendWarRequest(ctx, os.Stdin, c) == -1 {
 				continue
 			}
 
 			// Accept dealt cards inside the message: type CardsDealed
 			if err := dec.Decode(&buf); err != nil {
 				log.Println(err)
+				break
 			}
 			cardsDealt, err := casino.ParseCardsDealt(buf)
 			if err != nil {

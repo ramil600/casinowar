@@ -7,7 +7,7 @@ import (
 //ParseCardsDealt will take wrapped TCPData json and Unmarshal byte part of it
 //to CardsDealed json struct
 func ParseCardsDealt(tcpdata TCPData) (CardsDealed, error) {
-    cardsdealt := CardsDealed{}
+	cardsdealt := CardsDealed{}
 	err := json.Unmarshal(tcpdata.Data, &cardsdealt)
 	if err != nil {
 		return CardsDealed{}, err

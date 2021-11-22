@@ -1,55 +1,55 @@
 package casino
 
-import(
+import (
 	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_DealCards(t * testing.T){
+func TestDealCards(t *testing.T) {
 
-	s := casino.State{
-		DCard: casino.Card{
-			Suit: casino.Diamonds,
-			Rank: casino.Ace,
+	s := State{
+		DCard: Card{
+			Suit: Clubs,
+			Rank: Ace,
 		},
-		PCard: casino.Card{
-			Suit: casino.Diamonds,
-			Rank: casino.Ace,
+		PCard: Card{
+			Suit: Diamonds,
+			Rank: Ace,
 		},
-		Cards: *(casino.NewDeck()),
-		Player: casino.User{
-			Bank: 1000,
+		Cards: *(NewDeck()),
+		Player: User{
+			Bank:    1000,
 			OrigBet: 100,
-			SideBet:10,
+			SideBet: 10,
 		},
-		TopCard:2,
-		War: false,
+		TopCard: 2,
+		War:     false,
 	}
-	have, err:= s.DealCards()
+	have, err := s.DealCards()
 	if err != nil {
 		t.Error("Test failed when dealing cards", err)
 	}
 
-
-	cardsDealt := casino.CardsDealed{
-		PlayerCard: casino.Card{
-			Rank: casino.Four,
-			Suit: casino.Clubs,
+	cardsDealt := CardsDealed{
+		PlayerCard: Card{
+			Rank: Four,
+			Suit: Clubs,
 		},
-		DealerCard: casino.Card{
-			Rank: casino.Five,
-			Suit: casino.Clubs,
+		DealerCard: Card{
+			Rank: Five,
+			Suit: Clubs,
 		},
-		OrigBet: s.Player.OrigBet,
+		OrigBet:  s.Player.OrigBet,
+		UserBank: s.Player.Bank,
 	}
 
 	data, _ := json.Marshal(cardsDealt)
 
-	want := casino.TCPData{
-		Typ: "cardsdealed",
-		Data : data,
+	want := TCPData{
+		Typ:  "cardsdealed",
+		Data: data,
 	}
 	assert.Equal(t, have, want, "Verify if DealCards returns expected msg")
 

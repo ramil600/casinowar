@@ -9,16 +9,18 @@ import (
 	"net"
 	"os"
 
+	"github.com/ardanlabs/conf"
 	"github.com/ramil600/casinowar/casino"
 )
+
 //SendCards will Marshall json object and write it to connection
-func SendCards (msg casino.TCPData, w io.Writer) error{
+func SendCards(msg casino.TCPData, w io.Writer) error {
 
 	rawMessage, err := json.Marshal(msg)
 	if err != nil {
 		return err
 	}
-	
+
 	// Send message to player
 	if _, err := w.Write(rawMessage); err != nil {
 		return err
@@ -30,9 +32,7 @@ func SendCards (msg casino.TCPData, w io.Writer) error{
 // HandleConnection will response to connected client. Server will start HandleConnection as
 // a separate goroutine. Context to be implemented.
 
-
 func HandleConnection(ctx context.Context, c io.ReadWriteCloser) {
-
 
 	defer c.Close()
 
@@ -41,19 +41,20 @@ func HandleConnection(ctx context.Context, c io.ReadWriteCloser) {
 
 	//Initialize new deck
 	cards := casino.NewDeck()
-	cards.Shuffle(20)
+	cards.Shuffle()
 	state := casino.InitState(*cards)
 	dec := json.NewDecoder(c)
 
-
 	for {
 		// Receive the input from the user
-		err:= dec.Decode(&newBet)
+		err := dec.Decode(&newBet)
 		if err == io.EOF {
 			c.Close()
 			break
 		} else if err != nil {
-			log.Fatal(err)
+			log.Print(err)
+			c.Close()
+			break
 		}
 
 		state.PlaceBet(newBet.Bet)
@@ -62,39 +63,41 @@ func HandleConnection(ctx context.Context, c io.ReadWriteCloser) {
 		if (newBet.Bet <= 0) && (newBet.WarReq != "true") {
 			break
 		}
-		// War Request came from player double the bet
-		if newBet.WarReq == "true" {
-			fmt.Println("War request from player processed.")
-			state.PlaceWarBet()
-		}
 
 		//Deal Cards and send player cardsdealed message
 		msg, err := state.DealCards()
 		if err != nil {
 			c.Close()
-			log.Fatal("Error during dealing cards generating TCPdata",err)
+			log.Fatal("Error during dealing cards generating TCPdata", err)
 			break
 		}
-		if err:= SendCards(msg, c); err != nil {
+		if err := SendCards(msg, c); err != nil {
 			log.Println("Could not send the message to player:", err)
 			c.Close()
 			break
 
-
 		}
 
+		// Handle War Game Scenario
+		if state.IsDraw() {
+			err := dec.Decode(&warBet)
+			if err == io.EOF {
+				c.Close()
+				break
+			} else if err != nil {
+				log.Println(err)
+			}
 
-		if state.IsDraw(){
-			dec.Decode(&warBet)
-			if warBet.WarReq == "true"{
+			if warBet.WarReq == "true" {
 				fmt.Println("We are going to war..")
 				//state.BurnCards()
 				//Deal Cards and Send message to the player
 				state.GotoWar(true)
+				state.PlaceWarBet()
 				msg, err := state.DealCards()
 				if err != nil {
-					break
 					log.Println("Error during Dealing Cards in war bet: ", err)
+					break
 				}
 				if err := SendCards(msg, c); err != nil {
 					log.Println("Could not send the message to player", err)
@@ -107,30 +110,40 @@ func HandleConnection(ctx context.Context, c io.ReadWriteCloser) {
 				state.ProcessWarOut()
 			}
 			continue
-		} 
+		}
 	}
-
 
 }
 
 func main() {
-
-	args := os.Args
-	if len(args) == 1 {
-
-		log.Fatalln("Please provide host:port")
+	// SETTING UP CLI CONFIGURATION
+	var cfg struct {
+		Port string `conf:"default:8081"`
 	}
-	// Usage: First argument will be the port to listen at
-	port := args[1]
 
-	l, err := net.Listen("tcp", fmt.Sprint(":", port))
+	if err := conf.Parse(os.Args[1:], "SERVER", &cfg); err != nil {
+		switch err {
+		case conf.ErrHelpWanted:
+			usage, err := conf.Usage("SERVER", &cfg)
+			if err != nil {
+				log.Fatal("generating config usage")
+			}
+			fmt.Println(usage)
+
+		}
+		log.Fatal("Parsing config")
+
+	}
+
+	l, err := net.Listen("tcp", fmt.Sprint(":", cfg.Port))
 	if err != nil {
-		log.Fatalf("Could not open connection to host: %s ", port)
+		log.Fatalf("Could not open listener to host: %s ", cfg.Port)
 	}
 	defer l.Close()
 
 	for {
 		// Accept the connection from a client
+
 		c, err := l.Accept()
 		if err != nil {
 			log.Fatal("Could not accept the connection")
@@ -141,5 +154,4 @@ func main() {
 		go HandleConnection(context.Background(), c)
 
 	}
-
 }
