@@ -45,7 +45,7 @@ OPTIONS
 The game logic is stored in State struct in game.go file. It holds player's and dealer's 
 cards. The deck that the game  is played with includes 6 * 52 cards. TopCard is pointing to
 the top of the deck. And the player information that participates in the game.
-###THE SERVER
+### THE SERVER
 For each concurrent player HandleConnection function initiates a new deck, shuffles the cards
 in the deck.
 It enters the game loop by accepting the player's bet. If bet is 0, it means that the player
@@ -63,6 +63,7 @@ to send json object to the client.
 If player opts out server calls State#ProcessWarOut function that handles partially refunding
 player's bet.
 
-###THE CLIENT
+### THE CLIENT
+
 Every client is given 10000$ in the bank to start the game and offered to make original and
 side bets. Inputs are taken through os.Stdin and marshalled json objects are sent to server.
