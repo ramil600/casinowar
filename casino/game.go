@@ -5,7 +5,7 @@ import (
 	"errors"
 )
 
-// Current state of the game
+// State is the current state of the game
 type State struct {
 	DCard   Card // card of Dealer
 	PCard   Card // card of Player
@@ -59,14 +59,14 @@ func InitState(deck Deck) *State {
 		},
 	}
 }
-func (s *State) UpdateUserBank(){
+func (s *State) UpdateUserBank() {
 	if s.PCard.Rank > s.DCard.Rank {
 		s.Player.Bank += float64(s.Player.OrigBet * 2)
 	}
 
 	if (s.PCard.Rank == s.DCard.Rank) && s.War {
-		s.Player.Bank += float64 (s.Player.OrigBet * 4)
-		s.Player.Bank += float64 (s.Player.SideBet * 10)
+		s.Player.Bank += float64(s.Player.OrigBet * 4)
+		s.Player.Bank += float64(s.Player.SideBet * 10)
 	}
 }
 func (s *State) DealCards() (TCPData, error) {
